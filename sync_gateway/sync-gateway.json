@@ -1,0 +1,13 @@
+{
+    "adminInterface":"0.0.0.0:4985",
+    "databases": {
+        "default": {
+            "server": "http://127.0.0.1:8091",
+            "bucket": "default"
+        },
+        "default_test": {
+            "server": "http://127.0.0.1:8091",
+            "bucket": "default_test"
+        }
+    }
+}

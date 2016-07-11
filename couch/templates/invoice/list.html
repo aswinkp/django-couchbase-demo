@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Address List</title>
+</head>
+<body>
+<a href="{% url "address_create" %}">Add New Address</a>
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Address 1</th>
+        <th>Address 2</th>
+        <th>City</th>
+        <th>Pin</th>
+    </tr>
+    {% for row in list %}
+        <tr>
+            <td><a href="{% url "address_show" row.meta.id %}">{{ row.default.name }}</a></td>
+            <td>{{ row.default.address1 }}</td>
+            <td>{{ row.default.address2 }}</td>
+            <td>{{ row.default.city }}</td>
+            <td>{{ row.default.pin }}</td>
+        </tr>
+    {% endfor %}
+</table>
+</body>
+</html>

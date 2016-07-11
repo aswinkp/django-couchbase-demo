@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Address</title>
+</head>
+<body>
+<a href="{% url "article_list" %}">Back to list of Maps</a><br>
+<br>
+{{ doc.title }}<br>
+{{ doc.year_published }}<br>
+{{ doc.is_draft }}<br>
+
+<a href="{% url "article_update" id %}">Edit</a>
+<a href="{% url "article_delete" id %}">Delete</a>
+</body>
+</html>

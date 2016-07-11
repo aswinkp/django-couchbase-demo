@@ -1,0 +1,11 @@
+couchbase==2.0.9
+Django==1.9.7
+django-cbtools==1.2.0
+django-extensions==1.6.7
+django-tastypie==0.13.3
+python-dateutil==2.5.3
+python-mimeparse==1.5.2
+pytz==2016.4
+requests==2.10.0
+shortuuid==0.4.3
+six==1.10.0

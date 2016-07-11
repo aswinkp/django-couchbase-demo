@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Address</title>
+</head>
+<body>
+<a href="{% url "address_list" %}">Back to list of Maps</a><br>
+<br>
+{{ doc.value.name }}<br>
+{{ doc.value.address1 }}<br>
+{{ doc.value.address2 }}<br>
+{{ doc.value.city }}<br>
+{{ doc.value.pin }}<br><br>
+
+<a href="{% url "address_update" id %}">Edit</a>
+<a href="{% url "address_delete" id %}">Delete</a>
+</body>
+</html>
