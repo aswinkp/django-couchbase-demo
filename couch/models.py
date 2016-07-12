@@ -7,50 +7,56 @@ from django_couchbase.fields import ModelReferenceField
 from couchbase.bucket import Bucket
 
 
-from djangotoolbox.fields import ListField,EmbeddedModelField, DictField
+from djangotoolbox.fields import ListField, EmbeddedModelField, DictField
 
 class CBArticle(CBModelNew):
     class Meta:
         abstract = True
 
     doc_type = 'article'
-    uid_prefix = 'atl'
-    server = '127.0.0.1:8091'
-    bkt = 'default'
+    id_prefix = 'atl'
     db = Bucket('couchbase://127.0.0.1:8091/default')
 
     title = models.CharField(max_length=45, null=True, blank=True)
     year_published = models.IntegerField(default=2014)
     is_draft = models.BooleanField(default=True)
-    authors = ListField(EmbeddedModelField("CBAuthor"))
-    author= EmbeddedModelField("CBAuthor")
+    # authors = ListField(EmbeddedModelField("CBAuthor"))
+    # author= EmbeddedModelField("CBAuthor")
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    atr_ref = ModelReferenceField("CBAuthor")
+    author = ModelReferenceField("CBAuthorRef")
+    authors = ListField(ModelReferenceField("CBAuthorRef"))
 
     #for saving
     def to_dict(self):
         d = super(CBArticle, self).to_dict()
-        self.to_dict_nested('author', d)
-        self.to_dict_nested_list('authors', d)
-
+        # self.to_dict_nested('author', d)
+        # self.to_dict_nested_list('authors', d)
         return d
 
     #for loading
     def from_dict(self, dict_payload):
-        self.from_dict_nested('author', CBAuthor, dict_payload)
-        self.from_dict_nested_list('authors', CBAuthor, dict_payload)
-        super(CBArticle, self).from_dict(dict_payload, ['authors','author'])
+        # self.from_dict_nested('author', CBAuthor, dict_payload)
+        # self.from_dict_nested_list('authors', CBAuthor, dict_payload)
+        super(CBArticle, self).from_dict(dict_payload, [])
 
 class CBAuthor(CouchbaseNestedModelNew):
     class Meta:
         abstract = True
 
     doc_type = 'author'
-    uid_prefix = 'atr'
-    server = '127.0.0.1:8091'
-    bkt = 'default'
+    id_prefix = 'atr'
 
+    name = models.CharField(max_length=45, null=True, blank=True)
+    age = models.IntegerField(default=2014)
+
+class CBAuthorRef(CBModelNew):
+    class Meta:
+        abstract = True
+
+    doc_type = 'author'
+    id_prefix = 'atr'
+    db = Bucket('couchbase://127.0.0.1:8091/default')
     name = models.CharField(max_length=45, null=True, blank=True)
     age = models.IntegerField(default=2014)
 

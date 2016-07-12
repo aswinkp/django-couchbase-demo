@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 from decimal import Decimal
+
+from djangotoolbox.fields import ListField
 from six import string_types
 import logging
 from django.utils import timezone, dateparse
@@ -23,7 +25,7 @@ from django.db.models.fields import DateTimeField, DecimalField
 from django_couchbase.fields import ModelReferenceField
 
 CHANNELS_FIELD_NAME = "channels"
-DOC_TYPE_FIELD_NAME = "type"
+DOC_TYPE_FIELD_NAME = "doc_type"
 
 CHANNEL_PUBLIC = 'public'
 
@@ -35,25 +37,25 @@ class CBModelNew(models.Model):
     class Meta:
         abstract = True
 
-    uid_prefix = 'st'
+    id_prefix = 'st'
     doc_type = None
     _serializer = Serializer()
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.get_uid() == other.get_uid()
+            return self.get_id() == other.get_id()
 
     def __init__(self, *args, **kwargs):
         self.channels = []
-        self.uid = None
+        self.id = None
         self.rev = None
-        if 'uid_prefix' in kwargs:
-            self.uid_prefix = kwargs['uid_prefix']
-            del kwargs['uid_prefix']
+        if 'id_prefix' in kwargs:
+            self.id_prefix = kwargs['id_prefix']
+            del kwargs['id_prefix']
 
-        if 'uid' in kwargs:
-            self.uid = kwargs['uid']
-            del kwargs['uid']
+        if 'id' in kwargs:
+            self.id = kwargs['id']
+            del kwargs['id']
 
         clean_kwargs = self.__clean_kwargs(kwargs)
         # we never pass args because we never use them
@@ -64,11 +66,11 @@ class CBModelNew(models.Model):
             if isinstance(v, string_types):
                 self.load(v)
 
-    def get_uid(self):
+    def get_id(self):
         if self.is_new():
             pf = ShortUUIDField()
-            self.uid = self.uid_prefix + '::' + pf.create_uuid()
-        return self.uid
+            self.id = self.id_prefix + '::' + pf.create_uuid()
+        return self.id
 
     def save(self, *args, **kwargs):
         self.updated = timezone.now()
@@ -83,15 +85,27 @@ class CBModelNew(models.Model):
                 if not file_field._committed:
                     file_field.save(file_field.name, file_field, False)
 
+            if isinstance(field, ModelReferenceField):
+                ref_obj = getattr(self, field.name)
+                if ref_obj and not isinstance(ref_obj, unicode):
+                    ref_obj.save()
+                    setattr(self,field.name,ref_obj.id)
+
+            if isinstance(field, ListField) and isinstance(field.item_field, ModelReferenceField ):
+                ref_objs = getattr(self, field.name)
+                id_arr = []
+                if isinstance(ref_objs, list) and len(ref_objs):
+                    for obj in ref_objs:
+                        if obj and not isinstance(obj, unicode):
+                            obj.save()
+                            id_arr.append(obj.id)
+                    setattr(self, field.name, id_arr)
+
         data_dict = self.to_dict()
-        if hasattr(self, 'rev') and self.rev:
-            data_dict['_rev'] = self.rev
-        if hasattr(self, 'rev') and self.rev:
-            data_dict['_rev'] = self.rev
         if self.is_new():
-            self.db.add(self.get_uid(), data_dict)
+            self.db.add(self.get_id(), data_dict)
         else:
-            self.db.set(self.get_uid(), data_dict)
+            self.db.set(self.get_id(), data_dict)
 
     # for saving
     def to_dict(self):
@@ -100,7 +114,7 @@ class CBModelNew(models.Model):
         d = self._serializer.from_json(tastyjson)
 
         d[DOC_TYPE_FIELD_NAME] = self.get_doc_type()
-        d['uid'] = self.get_uid()
+        d['id'] = self.get_id()
         if 'cbnosync_ptr' in d: del d['cbnosync_ptr']
         if 'csrfmiddlewaretoken' in d: del d['csrfmiddlewaretoken']
         for field in self._meta.fields:
@@ -120,25 +134,36 @@ class CBModelNew(models.Model):
                 self._decimal_from_string(field.name, dict_payload.get(field.name))
             elif field.name in dict_payload:
                 setattr(self, field.name, dict_payload[field.name])
-        if 'uid' in dict_payload.keys():
-            self.uid = dict_payload['uid']
+        if 'id' in dict_payload.keys():
+            self.id = dict_payload['id']
 
     def from_row(self, row):
         self.from_dict(row.value)
-        self.uid = row.key
+        self.id = row.key
 
-    def load(self, uid):
+    def load(self, id):
         try:
-            doc = self.db.get(uid)
+            doc = self.db.get(id)
             self.from_row(doc)
         except:
             raise NotFoundError
 
     def delete(self):
         try:
-            self.db.remove(self.uid)
+            self.db.remove(self.id)
         except NotFoundError:
             return HttpResponseNotFound
+
+    def load_related(self,related_attr, related_klass):
+        id = getattr(self, related_attr)
+        return related_klass(id)
+
+    def load_related_list(self,related_attr, related_klass):
+        ids = getattr(self, related_attr)
+        objs = []
+        for id in ids:
+            objs.append(related_klass(id))
+        return objs
 
     def to_dict_nested(self, key, parent_dict):
         parent_dict[key] = getattr(self, key).to_dict()
@@ -149,12 +174,6 @@ class CBModelNew(models.Model):
         for item in getattr(self, key):
             parent_dict[key].append(item.to_dict())
         return parent_dict
-
-    def to_dict_reference(self, key, nested_klass, parent_dict):
-        if key in parent_dict.keys():
-            item = nested_klass()
-
-        pass
 
     def from_dict_nested(self, key, nested_klass, dict_payload):
         if key in dict_payload.keys():
@@ -203,7 +222,7 @@ class CBModelNew(models.Model):
         setattr(self, key, v)
 
     def is_new(self):
-        return not hasattr(self, 'uid') or not self.uid
+        return not hasattr(self, 'id') or not self.id
 
     def from_json(self, json_payload):
         d = self._serializer.from_json(json_payload)
@@ -229,16 +248,6 @@ class CBModelNew(models.Model):
             setattr(self, field_name, val)
             logger.warning('can not parse decimal (raw value used) %s: %s', field_name, e)
 
-
-
-    def from_sync_gateway_row(self, row):
-        if 'error' in row:
-            raise sync_gateway.SyncGatewayException(row)
-        self.from_dict(row['doc'])
-        self.uid = row['id']
-        self.rev = row['value']['rev']
-        # self.doc_type = row['doc']['doc_type']
-
     def to_json(self):
         d = self.to_dict()
         return self._serializer.to_json(d)
@@ -248,14 +257,9 @@ class CBModelNew(models.Model):
             return self.doc_type
         return self.__class__.__name__.lower()
 
-    def append_channel(self, channel):
-        self.append_to_references_list(CHANNELS_FIELD_NAME, channel)
-
-    def clear_channels(self):
-        self.channels = []
 
     def __unicode__(self):
-        return u'%s: %s' % (self.uid, self.to_json())
+        return u'%s: %s' % (self.id, self.to_json())
 
     def __clean_kwargs(self, data):
         common = set.intersection(
@@ -272,141 +276,5 @@ class CouchbaseNestedModelNew(CBModelNew):
     def save(self, *args, **kwargs):
         raise CouchbaseModelError('this object is not supposed to be saved, it is nested')
 
-    def load(self, uid):
+    def load(self, id):
         raise CouchbaseModelError('this object is not supposed to be loaded, it is nested')
-
-
-#
-# class CBNoSync(CouchbaseModel):
-#
-#     # def db(self):
-#     #     return Bucket('couchbase://'+self.server+'/'+self.bkt)
-#
-#     def get_uid(self):
-#         if self.is_new():
-#             pf = ShortUUIDField()
-#             self.uid = self.uid_prefix + '::' + pf.create_uuid()
-#         return self.uid
-#
-#     def save(self, *args, **kwargs):
-#         self.updated = timezone.now()
-#         if not hasattr(self, 'created') or self.created is None:
-#             self.created = self.updated
-#
-#         # save files
-#         for field in self._meta.fields:
-#             if isinstance(field, FileField):
-#                 file_field = getattr(self, field.name)
-#
-#                 if not file_field._committed:
-#                     file_field.save(file_field.name, file_field, False)
-#
-#         data_dict = self.to_dict()
-#         if hasattr(self, 'rev') and self.rev:
-#             data_dict['_rev'] = self.rev
-#         if hasattr(self, 'rev') and self.rev:
-#             data_dict['_rev'] = self.rev
-#         if self.is_new():
-#             self.db.add(self.get_uid(), data_dict)
-#         else:
-#             self.db.set(self.get_uid(), data_dict)
-#
-#     #for saving
-#     def to_dict(self):
-#         d = model_to_dict(self)
-#         tastyjson = self._serializer.to_json(d)
-#         d = self._serializer.from_json(tastyjson)
-#
-#         d[DOC_TYPE_FIELD_NAME] = self.get_doc_type()
-#         d['uid'] = self.get_uid()
-#         if 'cbnosync_ptr' in d: del d['cbnosync_ptr']
-#         if 'channels' in d: del d['channels']
-#         if 'csrfmiddlewaretoken' in d: del d['csrfmiddlewaretoken']
-#         if 'st_deleted' in d: del d['st_deleted']
-#         del d['id']
-#         for field in self._meta.fields:
-#             if isinstance(field, DateTimeField):
-#                 d[field.name] = self._string_from_date(field.name)
-#         return d
-#
-#     def from_dict(self, dict_payload, embeded_key=[]):
-#         for field in self._meta.fields:
-#             if field.name not in dict_payload:
-#                 continue
-#             if field.name in embeded_key:
-#                 continue
-#             if isinstance(field, DateTimeField):
-#                 self._date_from_string(field.name, dict_payload.get(field.name))
-#             elif isinstance(field, DecimalField):
-#                 self._decimal_from_string(field.name, dict_payload.get(field.name))
-#             elif field.name in dict_payload:
-#                 setattr(self, field.name, dict_payload[field.name])
-#         if 'uid' in dict_payload.keys():
-#             self.uid = dict_payload['uid']
-#
-#     def from_row(self, row):
-#         self.from_dict(row.value)
-#         self.uid = row.key
-#
-#     def load(self, uid):
-#         try:
-#             doc = self.db.get(uid)
-#             self.from_row(doc)
-#         except:
-#             raise NotFoundError
-#
-#     def delete(self):
-#         try:
-#             self.db.remove(self.uid)
-#         except NotFoundError:
-#             return HttpResponseNotFound
-#
-#     def to_dict_nested(self, key, parent_dict):
-#         parent_dict[key] = getattr(self, key).to_dict()
-#         return parent_dict
-#
-#
-#     def to_dict_nested_list(self, key, parent_dict):
-#         parent_dict[key] = []
-#         for item in getattr(self, key):
-#             parent_dict[key].append(item.to_dict())
-#         return parent_dict
-#
-#     def to_dict_reference(self, key, nested_klass, parent_dict):
-#         if key in parent_dict.keys():
-#             item = nested_klass()
-#
-#         pass
-#
-#
-#     def from_dict_nested(self, key, nested_klass, dict_payload):
-#         if key in dict_payload.keys():
-#             item = nested_klass()
-#             item.from_dict(dict_payload[key])
-#             nested_list = item
-#             setattr(self, key, nested_list)
-#
-#     def from_dict_nested_list(self, key, nested_klass, dict_payload):
-#         setattr(self, key, [])
-#         nested_list = getattr(self, key)
-#         if key in dict_payload.keys():
-#             for d in dict_payload[key]:
-#                 item = nested_klass()
-#                 item.from_dict(d)
-#                 nested_list.append(item)
-#
-#
-# class CBNestedNoSync(CBNoSync):
-#     class Meta:
-#         abstract = True
-#
-#     def __init__(self, *args, **kwargs):
-#         super(CBNestedNoSync, self).__init__(**kwargs)
-#         delattr(self, 'created')
-#         delattr(self, 'updated')
-#
-#     def save(self, *args, **kwargs):
-#         raise CouchbaseModelError('this object is not supposed to be saved, it is nested')
-#
-#     def load(self, uid):
-#         raise CouchbaseModelError('this object is not supposed to be loaded, it is nested')
