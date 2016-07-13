@@ -17,12 +17,12 @@ from django_cbtools import sync_gateway
 from django.db import models
 from django.utils import timezone
 from django.db.models.fields.files import FileField
-from couchbase.bucket import Bucket, NotFoundError
+from couchbase.bucket import Bucket, NotFoundError, ValueResult
 from django_extensions.db.fields import ShortUUIDField
 from django.db.models.fields import DateTimeField, DecimalField
 #from django_cbtools.models import CouchbaseModel, CouchbaseModelError
 
-from django_couchbase.fields import ModelReferenceField
+from django_couchbase.fields import PartialReferenceField
 
 CHANNELS_FIELD_NAME = "channels"
 DOC_TYPE_FIELD_NAME = "doc_type"
@@ -33,7 +33,7 @@ CHANNEL_PUBLIC = 'public'
 class CouchbaseModelError(Exception):
     pass
 
-class CBModelNew(models.Model):
+class CBModel(models.Model):
     class Meta:
         abstract = True
 
@@ -59,12 +59,15 @@ class CBModelNew(models.Model):
 
         clean_kwargs = self.__clean_kwargs(kwargs)
         # we never pass args because we never use them
-        super(CBModelNew, self).__init__(**clean_kwargs)
+        super(CBModel, self).__init__(**clean_kwargs)
 
         if len(args) == 1:
             v = args[0]
+            if isinstance(v, ValueResult):
+                self.load_list(v)
             if isinstance(v, string_types):
                 self.load(v)
+
 
     def get_id(self):
         if self.is_new():
@@ -84,22 +87,6 @@ class CBModelNew(models.Model):
 
                 if not file_field._committed:
                     file_field.save(file_field.name, file_field, False)
-
-            if isinstance(field, ModelReferenceField):
-                ref_obj = getattr(self, field.name)
-                if ref_obj and not isinstance(ref_obj, unicode):
-                    ref_obj.save()
-                    setattr(self,field.name,ref_obj.id)
-
-            if isinstance(field, ListField) and isinstance(field.item_field, ModelReferenceField ):
-                ref_objs = getattr(self, field.name)
-                id_arr = []
-                if isinstance(ref_objs, list) and len(ref_objs):
-                    for obj in ref_objs:
-                        if obj and not isinstance(obj, unicode):
-                            obj.save()
-                            id_arr.append(obj.id)
-                    setattr(self, field.name, id_arr)
 
         data_dict = self.to_dict()
         if self.is_new():
@@ -148,6 +135,9 @@ class CBModelNew(models.Model):
         except:
             raise NotFoundError
 
+    def load_list(self, doc):
+        self.from_row(doc)
+
     def delete(self):
         try:
             self.db.remove(self.id)
@@ -160,9 +150,11 @@ class CBModelNew(models.Model):
 
     def load_related_list(self,related_attr, related_klass):
         ids = getattr(self, related_attr)
+        docs_arr = related_klass.db.get_multi(ids)
         objs = []
-        for id in ids:
-            objs.append(related_klass(id))
+        for doc in docs_arr:
+            value = docs_arr[doc]
+            objs.append(related_klass(value))
         return objs
 
     def to_dict_nested(self, key, parent_dict):
@@ -173,6 +165,34 @@ class CBModelNew(models.Model):
         parent_dict[key] = []
         for item in getattr(self, key):
             parent_dict[key].append(item.to_dict())
+        return parent_dict
+
+    def to_dict_reference(self, key, parent_dict):
+        ref_obj = getattr(self,key)
+        if ref_obj and not isinstance(ref_obj, string_types):
+            ref_obj.save()
+            parent_dict[key] = ref_obj.id
+        return parent_dict
+
+    def to_dict_reference_list(self, key, parent_dict):
+        ref_objs = getattr(self, key)
+        id_arr = []
+        if isinstance(ref_objs, list) and len(ref_objs):
+            for obj in ref_objs:
+                if obj and not isinstance(obj, string_types):
+                    obj.save()
+                    id_arr.append(obj.id)
+        setattr(self, key, id_arr)
+        return parent_dict
+
+    def to_dict_partial_reference(self, key, parent_dict,links):
+        ref_obj = getattr(self, key)
+        if ref_obj and not isinstance(ref_obj, string_types):
+            ref_obj.save()
+            parent_dict[key] = ref_obj.id
+            for key,value in links.iteritems():
+                parent_dict[key] = getattr(ref_obj,value)
+                pass
         return parent_dict
 
     def from_dict_nested(self, key, nested_klass, dict_payload):
@@ -269,7 +289,7 @@ class CBModelNew(models.Model):
         return {fname: data[fname] for fname in common}
 
 
-class CouchbaseNestedModelNew(CBModelNew):
+class CBNestedModel(CBModel):
     class Meta:
         abstract = True
 
