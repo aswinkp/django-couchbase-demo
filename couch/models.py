@@ -8,6 +8,16 @@ from couchbase.bucket import Bucket
 
 from djangotoolbox.fields import ListField, EmbeddedModelField, DictField
 
+class CBAuthor(CBNestedModel):
+    class Meta:
+        abstract = True
+
+    doc_type = 'author'
+    id_prefix = 'atr'
+
+    name = models.CharField(max_length=45, null=True, blank=True)
+    age = models.IntegerField(default=2014)
+
 class CBArticle(CBModel):
     class Meta:
         abstract = True
@@ -21,8 +31,8 @@ class CBArticle(CBModel):
     is_draft = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    # authors = ListField(EmbeddedModelField("CBAuthor"))
-    # author= EmbeddedModelField("CBAuthor")
+    authors = ListField(EmbeddedModelField("CBAuthor"))
+    # author= EmbeddedModelField(CBAuthor)
     # author = ModelReferenceField("CBAuthorRef")
     # authors = ListField(ModelReferenceField("CBAuthorRef"))
 
@@ -33,8 +43,7 @@ class CBArticle(CBModel):
     #for saving
     def to_dict(self):
         d = super(CBArticle, self).to_dict()
-        # self.to_dict_nested('author', d)
-        # self.to_dict_nested_list('authors', d)
+        self.to_dict_nested_list('authors', d)
         # self.to_dict_reference('author', d)
         # self.to_dict_reference_list('authors', d)
         # self.to_dict_partial_reference('author', d, links={"author_name": "name","author_age":"age"})
@@ -42,19 +51,10 @@ class CBArticle(CBModel):
 
     #for loading
     def from_dict(self, dict_payload):
-        # self.from_dict_nested('author', CBAuthor, dict_payload)
-        # self.from_dict_nested_list('authors', CBAuthor, dict_payload)
-        super(CBArticle, self).from_dict(dict_payload, [])
+        super(CBArticle, self).from_dict(dict_payload)
+        self.from_dict_nested_list('authors', CBAuthor, dict_payload)
 
-class CBAuthor(CBNestedModel):
-    class Meta:
-        abstract = True
 
-    doc_type = 'author'
-    id_prefix = 'atr'
-
-    name = models.CharField(max_length=45, null=True, blank=True)
-    age = models.IntegerField(default=2014)
 
 
 class CBAuthorRef(CBModel):
@@ -68,32 +68,32 @@ class CBAuthorRef(CBModel):
     age = models.IntegerField(default=2014)
 
 
-# class Address(object):
-#     def __init__(self, name, _=None, id='', doc=None):
-#         self.id = id
-#         self.name = name
-#
-#         if doc:
-#             self.doc = doc.value
-#         else:
-#             self.doc = None
-#
-#     def get(self, name):
-#         if not self.doc:
-#             return ""
-#         return self.doc.get(name, "")
-#
-# class Invoice(object):
-#     def __init__(self, name, _=None, id='', doc=None):
-#         self.id = id
-#         self.name = name
-#
-#         if doc:
-#             self.doc = doc.value
-#         else:
-#             self.doc = None
-#
-#     def get(self, name):
-#         if not self.doc:
-#             return ""
-#         return self.doc.get(name, "")
+class Address(object):
+    def __init__(self, name, _=None, id='', doc=None):
+        self.id = id
+        self.name = name
+
+        if doc:
+            self.doc = doc.value
+        else:
+            self.doc = None
+
+    def get(self, name):
+        if not self.doc:
+            return ""
+        return self.doc.get(name, "")
+
+class Invoice(object):
+    def __init__(self, name, _=None, id='', doc=None):
+        self.id = id
+        self.name = name
+
+        if doc:
+            self.doc = doc.value
+        else:
+            self.doc = None
+
+    def get(self, name):
+        if not self.doc:
+            return ""
+        return self.doc.get(name, "")

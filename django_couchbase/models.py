@@ -23,6 +23,7 @@ from django.db.models.fields import DateTimeField, DecimalField
 #from django_cbtools.models import CouchbaseModel, CouchbaseModelError
 
 from django_couchbase.fields import PartialReferenceField
+from djangotoolbox.fields import ListField, EmbeddedModelField, DictField
 
 CHANNELS_FIELD_NAME = "channels"
 DOC_TYPE_FIELD_NAME = "doc_type"
@@ -107,13 +108,16 @@ class CBModel(models.Model):
         for field in self._meta.fields:
             if isinstance(field, DateTimeField):
                 d[field.name] = self._string_from_date(field.name)
+            if isinstance(field, EmbeddedModelField):
+                self.to_dict_nested(field.name, d)
         return d
 
-    def from_dict(self, dict_payload, embeded_key=[]):
+    def from_dict(self, dict_payload):
         for field in self._meta.fields:
             if field.name not in dict_payload:
                 continue
-            if field.name in embeded_key:
+            if isinstance(field, EmbeddedModelField):
+                self.from_dict_nested(field.name, field.embedded_model, dict_payload)
                 continue
             if isinstance(field, DateTimeField):
                 self._date_from_string(field.name, dict_payload.get(field.name))
@@ -123,6 +127,8 @@ class CBModel(models.Model):
                 setattr(self, field.name, dict_payload[field.name])
         if 'id' in dict_payload.keys():
             self.id = dict_payload['id']
+
+
 
     def from_row(self, row):
         self.from_dict(row.value)
