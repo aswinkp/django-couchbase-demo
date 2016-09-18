@@ -15,27 +15,10 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
-from couch.views import *
 
-address_urls = [
-    url(r'^$', address, name="address_list" ),
-    url(r'^create/$', address_create, name="address_create" ),
-    url(r'^update/(?P<id>[\W\w]+)/$', address_update, name="address_update" ),
-    url(r'^show/(?P<id>[\W\w]+)/$', address_show, name="address_show" ),
-    url(r'^delete/(?P<id>[\W\w]+)/$', address_delete, name="address_delete"),
-]
-article_urls = [
-    url(r'^$', article, name="article_list" ),
-    url(r'^create/$', article_create, name="article_create" ),
-    url(r'^update/(?P<id>[\W\w]+)/$', article_update, name="article_update" ),
-    url(r'^show/(?P<id>[\W\w]+)/$', article_show, name="article_show" ),
-    url(r'^delete/(?P<id>[\W\w]+)/$', article_delete, name="article_delete"),
-]
+
 
 urlpatterns = [
-    url(r'^$', form, name="home" ),
     url(r'^admin/', admin.site.urls),
-    url(r'^address/', include(address_urls)),
-    url(r'^article/', include(article_urls)),
 ]
 

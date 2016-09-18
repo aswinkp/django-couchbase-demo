@@ -102,16 +102,3 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
-
-# CouchBase Stuff
-COUCHBASE_BUCKET = 'default_test'
-COUCHBASE_HOSTS = ['127.0.0.1']
-COUCHBASE_PASSWORD = "administrator"
-COUCHBASE_STALE = False
-SYNC_GATEWAY_BUCKET = 'default_test'
-SYNC_GATEWAY_URL = 'http://127.0.0.1:4984'
-SYNC_GATEWAY_ADMIN_URL = 'http://127.0.0.1:4985'
-SYNC_GATEWAY_USER = "Administrator"
-SYNC_GATEWAY_PASSWORD = "administrator"
-SYNC_GATEWAY_GUEST_USER = "Administrator"
-SYNC_GATEWAY_GUEST_PASSWORD = "administrator"

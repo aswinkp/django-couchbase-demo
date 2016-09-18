@@ -22,7 +22,7 @@ from django_extensions.db.fields import ShortUUIDField
 from django.db.models.fields import DateTimeField, DecimalField
 #from django_cbtools.models import CouchbaseModel, CouchbaseModelError
 
-from django_couchbase.fields import PartialReferenceField
+from django_couchbase.fields import ModelReferenceField, PartialReferenceField
 from djangotoolbox.fields import ListField, EmbeddedModelField, DictField
 
 CHANNELS_FIELD_NAME = "channels"
@@ -109,9 +109,14 @@ class CBModel(models.Model):
             if isinstance(field, DateTimeField):
                 d[field.name] = self._string_from_date(field.name)
             if isinstance(field, ListField):
-                self.to_dict_nested_list(field.name, d)
+                if isinstance(field.item_field, EmbeddedModelField):
+                    self.to_dict_nested_list(field.name, d)
+                if isinstance(field.item_field, ModelReferenceField):
+                    self.to_dict_reference_list(field.name, d)
             if isinstance(field, EmbeddedModelField):
                 self.to_dict_nested(field.name, d)
+            if isinstance(field, ModelReferenceField):
+                self.to_dict_reference(field.name, d)
         return d
 
     def from_dict(self, dict_payload):
@@ -122,7 +127,8 @@ class CBModel(models.Model):
                 self.from_dict_nested(field.name, field.embedded_model, dict_payload)
                 continue
             if isinstance(field, ListField):
-                self.from_dict_nested_list(field.name, field.item_field.embedded_model, dict_payload)
+                if isinstance(field.item_field, EmbeddedModelField):
+                    self.from_dict_nested_list(field.name, field.item_field.embedded_model, dict_payload)
                 continue
             if isinstance(field, DateTimeField):
                 self._date_from_string(field.name, dict_payload.get(field.name))

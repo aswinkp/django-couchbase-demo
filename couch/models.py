@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from django.db import models
 from django_couchbase.models import CBModel,CBNestedModel
-from django_couchbase.fields import PartialReferenceField
+from django_couchbase.fields import PartialReferenceField, ModelReferenceField
 from couchbase.bucket import Bucket
 
 
@@ -31,7 +31,7 @@ class CBArticle(CBModel):
     is_draft = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    # authors = ListField(EmbeddedModelField(CBAuthor))
+    authors = ListField(EmbeddedModelField(CBAuthor))
     # author= EmbeddedModelField(CBAuthor)
     # author = ModelReferenceField("CBAuthorRef")
     # authors = ListField(ModelReferenceField("CBAuthorRef"))
@@ -58,34 +58,3 @@ class CBAuthorRef(CBModel):
     db = Bucket('couchbase://127.0.0.1:8091/default')
     name = models.CharField(max_length=45, null=True, blank=True)
     age = models.IntegerField(default=2014)
-
-
-class Address(object):
-    def __init__(self, name, _=None, id='', doc=None):
-        self.id = id
-        self.name = name
-
-        if doc:
-            self.doc = doc.value
-        else:
-            self.doc = None
-
-    def get(self, name):
-        if not self.doc:
-            return ""
-        return self.doc.get(name, "")
-
-class Invoice(object):
-    def __init__(self, name, _=None, id='', doc=None):
-        self.id = id
-        self.name = name
-
-        if doc:
-            self.doc = doc.value
-        else:
-            self.doc = None
-
-    def get(self, name):
-        if not self.doc:
-            return ""
-        return self.doc.get(name, "")
