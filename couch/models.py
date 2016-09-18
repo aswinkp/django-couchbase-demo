@@ -31,7 +31,7 @@ class CBArticle(CBModel):
     is_draft = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    authors = ListField(EmbeddedModelField("CBAuthor"))
+    # authors = ListField(EmbeddedModelField(CBAuthor))
     # author= EmbeddedModelField(CBAuthor)
     # author = ModelReferenceField("CBAuthorRef")
     # authors = ListField(ModelReferenceField("CBAuthorRef"))
@@ -43,18 +43,10 @@ class CBArticle(CBModel):
     #for saving
     def to_dict(self):
         d = super(CBArticle, self).to_dict()
-        self.to_dict_nested_list('authors', d)
         # self.to_dict_reference('author', d)
         # self.to_dict_reference_list('authors', d)
         # self.to_dict_partial_reference('author', d, links={"author_name": "name","author_age":"age"})
         return d
-
-    #for loading
-    def from_dict(self, dict_payload):
-        super(CBArticle, self).from_dict(dict_payload)
-        self.from_dict_nested_list('authors', CBAuthor, dict_payload)
-
-
 
 
 class CBAuthorRef(CBModel):

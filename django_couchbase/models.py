@@ -108,6 +108,8 @@ class CBModel(models.Model):
         for field in self._meta.fields:
             if isinstance(field, DateTimeField):
                 d[field.name] = self._string_from_date(field.name)
+            if isinstance(field, ListField):
+                self.to_dict_nested_list(field.name, d)
             if isinstance(field, EmbeddedModelField):
                 self.to_dict_nested(field.name, d)
         return d
@@ -118,6 +120,9 @@ class CBModel(models.Model):
                 continue
             if isinstance(field, EmbeddedModelField):
                 self.from_dict_nested(field.name, field.embedded_model, dict_payload)
+                continue
+            if isinstance(field, ListField):
+                self.from_dict_nested_list(field.name, field.item_field.embedded_model, dict_payload)
                 continue
             if isinstance(field, DateTimeField):
                 self._date_from_string(field.name, dict_payload.get(field.name))
