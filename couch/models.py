@@ -18,6 +18,16 @@ class CBAuthor(CBNestedModel):
     name = models.CharField(max_length=45, null=True, blank=True)
     age = models.IntegerField(default=2014)
 
+class CBAuthorRef(CBModel):
+    class Meta:
+        abstract = True
+
+    doc_type = 'author'
+    id_prefix = 'atr'
+    db = Bucket('couchbase://127.0.0.1:8091/default')
+    name = models.CharField(max_length=45, null=True, blank=True)
+    age = models.IntegerField(default=2014)
+
 class CBArticle(CBModel):
     class Meta:
         abstract = True
@@ -31,9 +41,9 @@ class CBArticle(CBModel):
     is_draft = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    authors = ListField(EmbeddedModelField(CBAuthor))
+    # authors = ListField(EmbeddedModelField(CBAuthor))
     # author= EmbeddedModelField(CBAuthor)
-    # author = ModelReferenceField("CBAuthorRef")
+    author = ModelReferenceField(CBAuthorRef)
     # authors = ListField(ModelReferenceField("CBAuthorRef"))
 
     # author = PartialReferenceField("CBAuthorRef")
@@ -49,12 +59,3 @@ class CBArticle(CBModel):
         return d
 
 
-class CBAuthorRef(CBModel):
-    class Meta:
-        abstract = True
-
-    doc_type = 'author'
-    id_prefix = 'atr'
-    db = Bucket('couchbase://127.0.0.1:8091/default')
-    name = models.CharField(max_length=45, null=True, blank=True)
-    age = models.IntegerField(default=2014)

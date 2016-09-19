@@ -157,6 +157,9 @@ class CBModel(models.Model):
 
     def delete(self):
         try:
+            for field in self._meta.fields:
+                if isinstance(field, ModelReferenceField):
+                    field.embedded_model.db.remove(getattr(self,field.name))
             self.db.remove(self.id)
         except NotFoundError:
             return HttpResponseNotFound
