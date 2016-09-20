@@ -111,8 +111,8 @@ class CBModel(models.Model):
             if isinstance(field, ListField):
                 if isinstance(field.item_field, EmbeddedModelField):
                     self.to_dict_nested_list(field.name, d)
-                if isinstance(field.item_field, ModelReferenceField):
-                    self.to_dict_reference_list(field.name, d)
+                # if isinstance(field.item_field, ModelReferenceField):
+                #     self.to_dict_reference_list(field.name, d)
             if isinstance(field, EmbeddedModelField):
                 self.to_dict_nested(field.name, d)
             if isinstance(field, ModelReferenceField):
@@ -159,7 +159,11 @@ class CBModel(models.Model):
         try:
             for field in self._meta.fields:
                 if isinstance(field, ModelReferenceField):
-                    field.embedded_model.db.remove(getattr(self,field.name))
+                    fld = getattr(self,field.name)
+                    if isinstance(field, field.embedded_model):
+                        fld.delete(self.id)
+                    # TODO delete after load related and check on delete
+                    # field.embedded_model.db.remove(getattr(self,field.name))
             self.db.remove(self.id)
         except NotFoundError:
             return HttpResponseNotFound
@@ -202,7 +206,7 @@ class CBModel(models.Model):
                 if obj and not isinstance(obj, string_types):
                     obj.save()
                     id_arr.append(obj.id)
-        setattr(self, key, id_arr)
+        parent_dict[key] =  id_arr
         return parent_dict
 
     def to_dict_partial_reference(self, key, parent_dict,links):
