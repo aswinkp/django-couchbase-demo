@@ -54,7 +54,7 @@ class CBArticle(CBModel):
     def to_dict(self):
         d = super(CBArticle, self).to_dict()
         # self.to_dict_reference('author', d)
-        self.to_dict_reference_list('authors', d)
+        # self.to_dict_reference_list('authors', d)
         # self.to_dict_partial_reference('author', d, links={"author_name": "name","author_age":"age"})
         return d
 

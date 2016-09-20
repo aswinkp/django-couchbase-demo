@@ -13,7 +13,8 @@ class TestCase(TestCase):
         pub2 = Publisher(name = "Much more Famous Publications")
         book = Book(name = "First Book", pages = 250, publisher = pub)
         book2 = Book(name = "Second Book", pages = 340, publisher = pub2)
-        author = Author(name = "Aswin", blog = blog, books = [book, book2])
+        address = Address(street = "Anna Nagar", city = "Chennai")
+        author = Author(name = "Aswin", blog = blog, books = [book, book2], address=address)
         author.save()
 
     def mrftest(self):

@@ -111,8 +111,8 @@ class CBModel(models.Model):
             if isinstance(field, ListField):
                 if isinstance(field.item_field, EmbeddedModelField):
                     self.to_dict_nested_list(field.name, d)
-                # if isinstance(field.item_field, ModelReferenceField):
-                #     self.to_dict_reference_list(field.name, d)
+                if isinstance(field.item_field, ModelReferenceField):
+                    self.to_dict_reference_list(field.name, d)
             if isinstance(field, EmbeddedModelField):
                 self.to_dict_nested(field.name, d)
             if isinstance(field, ModelReferenceField):
