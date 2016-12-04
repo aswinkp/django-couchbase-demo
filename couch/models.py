@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from django.db import models
 from django_couchbase.models import CBModel,CBNestedModel
 from django_couchbase.fields import PartialReferenceField, ModelReferenceField
-from couchbase.bucket import Bucket
 
 
 from djangotoolbox.fields import ListField, EmbeddedModelField, DictField
