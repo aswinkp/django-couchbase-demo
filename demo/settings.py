@@ -71,6 +71,10 @@ TEMPLATES = [
     },
 ]
 
+CB_BUCKETS = {
+    "MAIN_BUCKET" : '127.0.0.1/default'
+}
+
 WSGI_APPLICATION = 'demo.wsgi.application'
 
 

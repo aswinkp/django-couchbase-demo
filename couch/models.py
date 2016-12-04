@@ -24,7 +24,7 @@ class CBAuthorRef(CBModel):
 
     doc_type = 'author'
     id_prefix = 'atr'
-    db = Bucket('couchbase://127.0.0.1:8091/default')
+    bucket = "MAIN_BUCKET"
     name = models.CharField(max_length=45, null=True, blank=True)
     age = models.IntegerField(default=2014)
 
@@ -34,7 +34,8 @@ class CBArticle(CBModel):
 
     doc_type = 'article'
     id_prefix = 'atl'
-    db = Bucket('couchbase://127.0.0.1:8091/default')
+
+    bucket = "MAIN_BUCKET"
 
     title = models.CharField(max_length=45, null=True, blank=True)
     year_published = models.IntegerField(default=2014)
@@ -83,7 +84,7 @@ class Publisher(CBModel):
 
     doc_type = 'publisher'
     id_prefix = 'pub'
-    db = Bucket('couchbase://127.0.0.1:8091/default')
+    bucket = "MAIN_BUCKET"
 
     name = models.CharField(max_length=45, null=True, blank=True)
 
@@ -93,7 +94,7 @@ class Book(CBModel):
 
     doc_type = 'book'
     id_prefix = 'bk'
-    db = Bucket('couchbase://127.0.0.1:8091/default')
+    bucket = "MAIN_BUCKET"
 
     name = models.CharField(max_length=45, null=True, blank=True)
     pages = models.IntegerField()
@@ -105,7 +106,7 @@ class Address(CBModel):
 
     doc_type = 'address'
     id_prefix = 'addr'
-    db = Bucket('couchbase://127.0.0.1:8091/default')
+    bucket = "MAIN_BUCKET"
 
     street = models.CharField(max_length=45, null=True, blank=True)
     city = models.CharField(max_length=45, null=True, blank=True)
@@ -116,7 +117,7 @@ class Author(CBModel):
 
     doc_type = 'author'
     id_prefix = 'atr'
-    db = Bucket('couchbase://127.0.0.1:8091/default')
+    bucket = "MAIN_BUCKET"
 
     name = models.CharField(max_length=45, null=True, blank=True)
     blog = EmbeddedModelField(Blog)

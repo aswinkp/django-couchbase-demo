@@ -21,3 +21,7 @@ class TestCase(TestCase):
         authors = [CBAuthorRef(name="Aswin", age="50"), CBAuthorRef(name="Aswin2", age="502")]
         article = CBArticle(title="BBBBBBBB", year_published=2010, is_draft=True, authors=authors)
         article.save()
+
+    def retrivetest(self):
+        print Book('bk::38QdjLV3o37keXXo2pWsyF')
+        print Author('atr::JXkj7JX5BkjCyc4DGbnjbF')
