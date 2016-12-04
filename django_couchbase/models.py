@@ -34,7 +34,7 @@ CHANNEL_PUBLIC = 'public'
 class CouchbaseModelError(Exception):
     pass
 
-class CBNestedModel(models.Model):
+class CBModel(models.Model):
     class Meta:
         abstract = True
 
@@ -50,6 +50,8 @@ class CBNestedModel(models.Model):
         self.channels = []
         self.id = None
         self.rev = None
+        if hasattr(self, 'bucket'):
+            self.db = self.get_bucket()
         if 'id_prefix' in kwargs:
             self.id_prefix = kwargs['id_prefix']
             del kwargs['id_prefix']
@@ -60,7 +62,8 @@ class CBNestedModel(models.Model):
 
         clean_kwargs = self.__clean_kwargs(kwargs)
         # we never pass args because we never use them
-        super(CBNestedModel, self).__init__(**clean_kwargs)
+        super(CBModel, self).__init__(**clean_kwargs)
+
 
         if len(args) == 1:
             v = args[0]
@@ -69,19 +72,34 @@ class CBNestedModel(models.Model):
             if isinstance(v, string_types):
                 self.load(v)
 
-
     def get_id(self):
         if self.is_new():
             pf = ShortUUIDField()
             self.id = self.id_prefix + '::' + pf.create_uuid()
         return self.id
 
-
     def get_bucket(self):
-        return Bucket(''.join(['couchbase://',settings.CB_BUCKETS.get(self.bucket)]))
+        return Bucket(''.join(['couchbase://', settings.CB_BUCKETS.get(self.bucket)]))
 
     def save(self, *args, **kwargs):
-        raise CouchbaseModelError('this object is not supposed to be saved, it is nested')
+        self.updated = timezone.now()
+        if not hasattr(self, 'created') or self.created is None:
+            self.created = self.updated
+
+        # save files
+        for field in self._meta.fields:
+            if isinstance(field, FileField):
+                file_field = getattr(self, field.name)
+
+                if not file_field._committed:
+                    file_field.save(file_field.name, file_field, False)
+
+        data_dict = self.to_dict()
+        if self.is_new():
+            self.db.add(self.get_id(), data_dict)
+        else:
+            self.db.set(self.get_id(), data_dict)
+
 
     # for saving
     def to_dict(self):
@@ -134,7 +152,11 @@ class CBNestedModel(models.Model):
         self.id = row.key
 
     def load(self, id):
-        raise CouchbaseModelError('this object is not supposed to be loaded, it is nested')
+        try:
+            doc = self.db.get(id)
+            self.from_row(doc)
+        except:
+            raise NotFoundError
 
     def load_list(self, doc):
         self.from_row(doc)
@@ -143,7 +165,7 @@ class CBNestedModel(models.Model):
         try:
             for field in self._meta.fields:
                 if isinstance(field, ModelReferenceField):
-                    fld = getattr(self,field.name)
+                    fld = getattr(self, field.name)
                     if isinstance(field, field.embedded_model):
                         fld.delete(self.id)
                     # TODO delete after load related and check on delete
@@ -297,37 +319,12 @@ class CBNestedModel(models.Model):
         return {fname: data[fname] for fname in common}
 
 
-class CBModel(CBNestedModel):
+class CBNestedModel(CBModel):
     class Meta:
         abstract = True
 
-
-    def __init__(self, *args, **kwargs):
-        self.db = self.get_bucket()
-        super(CBModel, self).__init__(**kwargs)
-
     def save(self, *args, **kwargs):
-        self.updated = timezone.now()
-        if not hasattr(self, 'created') or self.created is None:
-            self.created = self.updated
-
-        # save files
-        for field in self._meta.fields:
-            if isinstance(field, FileField):
-                file_field = getattr(self, field.name)
-
-                if not file_field._committed:
-                    file_field.save(file_field.name, file_field, False)
-
-        data_dict = self.to_dict()
-        if self.is_new():
-            self.db.add(self.get_id(), data_dict)
-        else:
-            self.db.set(self.get_id(), data_dict)
+        raise CouchbaseModelError('this object is not supposed to be saved, it is nested')
 
     def load(self, id):
-        try:
-            doc = self.db.get(id)
-            self.from_row(doc)
-        except:
-            raise NotFoundError
+        raise CouchbaseModelError('this object is not supposed to be loaded, it is nested')
